@@ -241,11 +241,12 @@
       ascii: "ASCII"
     };
     var src = norm.source || analysis.source || "";
+    var kindText = src === "expr" ? "expression 식" : (kindLabel[norm.kind] || norm.kind);
     setText(
       det,
       "Detected: " +
-        (kindLabel[norm.kind] || norm.kind) +
-        (src ? " (" + src + ")" : "") +
+        kindText +
+        (src && src !== "expr" ? " (" + src + ")" : "") +
         " · " +
         (q.bits || 0) +
         " bits / " +
@@ -257,7 +258,11 @@
     );
     if (q.error) setText(err, q.error);
 
-    var rows = [
+    var rows = [];
+    if (analysis.source === "expr") {
+      rows.push(["식", analysis.expr || raw]);
+    }
+    rows = rows.concat([
       ["HEX", q.hex],
       ["DEC", q.dec],
       ["BIN", q.bin],
@@ -272,10 +277,97 @@
       ["Unsigned (full)", q.unsigned],
       ["Signed " + state.bitWidth + "-bit", q.signedReg],
       ["Unsigned " + state.bitWidth + "-bit", q.unsignedReg]
-    ];
+    ]);
     for (var i = 0; i < rows.length; i++) {
       addRow(box, rows[i][0], rows[i][1]);
     }
+  }
+
+  function readFullInt(inputEl, errEl, allowEmpty) {
+    var raw = inputEl.value;
+    if (String(raw).trim() === "") {
+      setText(errEl, allowEmpty ? "" : "Empty input");
+      return { ok: false, error: "Empty input" };
+    }
+    var parsed = RU.parseInteger(raw);
+    if (!parsed.ok) {
+      setText(errEl, parsed.error);
+      return parsed;
+    }
+    setText(errEl, "");
+    return parsed;
+  }
+
+  function hexAddr(v) {
+    if (v < 0n) return "-" + RU.formatHexFree(-v);
+    return RU.formatHexFree(v);
+  }
+
+  /* ---------- Address ---------- */
+
+  function runAddress() {
+    var exprEl = $("ad-expr");
+    var err = $("ad-err");
+    var exprErr = $("ad-expr-err");
+    var out = $("ad-out");
+    var proof = $("ad-proof");
+    if (!exprEl) return;
+    clearEl(out);
+    setText(err, "");
+    setText(exprErr, "");
+    setText(proof, "");
+
+    var expr = String(exprEl.value || "").trim();
+    var result;
+    var lineA;
+    var lineB;
+    var opLabel = "+";
+
+    if (expr) {
+      var ex = RU.parseExpression(expr);
+      if (!ex.ok) {
+        setText(exprErr, ex.error);
+        return;
+      }
+      result = ex.value;
+      lineA = expr.replace(/\s+/g, " ");
+      lineB = null;
+    } else {
+      var a = readFullInt($("ad-a"), $("ad-a-err"), true);
+      var b = readFullInt($("ad-b"), $("ad-b-err"), true);
+      if (!a.ok || !b.ok) return;
+      var op = $("ad-op").value;
+      opLabel = op;
+      if (op === "-") result = a.value - b.value;
+      else if (op === "*") result = a.value * b.value;
+      else result = a.value + b.value;
+      lineA = hexAddr(a.value) + "  =  " + a.value.toString(10);
+      lineB = op + " " + hexAddr(b.value) + "  =  " + b.value.toString(10);
+    }
+
+    var hex = hexAddr(result);
+    var dec = result.toString(10);
+    var pad32 = result >= 0n && result <= 0xffffffffn ? RU.formatHex(result, 32) : RU.NA;
+    var pad64 = result >= 0n && result <= 0xffffffffffffffffn ? RU.formatHex(result, 64) : RU.NA;
+
+    if (lineB) {
+      setText(
+        proof,
+        lineA + "\n" +
+          lineB + "\n" +
+          "────────────────────────\n" +
+          hex + "  =  " + dec
+      );
+    } else {
+      setText(proof, lineA + "\n=  " + hex + "  (" + dec + ")");
+    }
+
+    addRow(out, "HEX", hex);
+    addRow(out, "DEC", dec);
+    addRow(out, "BIN", result >= 0n ? RU.formatBinFree(result) : "-" + RU.formatBinFree(-result));
+    addRow(out, "OCT", result >= 0n ? RU.formatOctFree(result) : "-" + RU.formatOctFree(-result));
+    addRow(out, "HEX 32-bit", pad32);
+    addRow(out, "HEX 64-bit", pad64);
   }
 
   /* ---------- Bitwise ---------- */
@@ -802,6 +894,9 @@
 
   function recalcTool() {
     switch (state.tool) {
+      case "address":
+        runAddress();
+        break;
       case "bitwise":
         runBitwise();
         break;
@@ -933,6 +1028,7 @@
     });
 
     var liveIds = [
+      "ad-expr", "ad-a", "ad-b", "ad-op",
       "bw-a", "bw-b",
       "sh-val", "sh-count",
       "xn-a", "xn-b",
@@ -987,6 +1083,10 @@
     runUniversal();
     expect($("u-results").textContent.indexOf("ABCD") >= 0, "universal ASCII ABCD");
     expect($("u-results").textContent.indexOf("44 43 42 41") >= 0, "universal little endian");
+
+    $("u-input").value = "0x401C04+7";
+    runUniversal();
+    expect($("u-results").textContent.indexOf("0x401C0B") >= 0, "0x401C04+7 = 0x401C0B");
 
     $("u-input").value = "41".repeat(40);
     runUniversal();

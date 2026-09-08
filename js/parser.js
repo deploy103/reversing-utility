@@ -156,6 +156,124 @@ RU.looksLikeSeparatedHex = function (raw) {
   return cleaned.length >= 2 && cleaned.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(cleaned);
 };
 
+/**
+ * 주소/정수 식인지. `0x401C04+7`, `0x401C04 + 7`, `4*8+0x10`
+ * HEX 덤프 `41-42-43-44` 는 식이 아니다.
+ */
+RU.looksLikeExpression = function (raw) {
+  var t = String(raw).trim();
+  if (!t) return false;
+  if (/[+]/.test(t) || /[*\/()]/.test(t)) return true;
+  if (!/-/.test(t)) return false;
+  if (RU.looksLikeSeparatedHex(t)) return false;
+  /* 0x401C0B-7 또는 100 - 3 처럼 숫자 두 개와 빼기 */
+  return /[0-9a-fA-FhHbBoOxX][ \t]*-[ \t]*[+]?[0-9a-fA-FhHbBoOxX]/.test(t);
+};
+
+/**
+ * + - * / 와 괄호. 곱·나눗셈이 덧셈보다 먼저. 나눗셈은 정수(BigInt).
+ * 예: 0x401C04 + 7 → 0x401C0B
+ */
+RU.parseExpression = function (raw) {
+  if (raw == null) return _fail("Empty input");
+  var s = String(raw).trim();
+  if (s === "") return _fail("Empty input");
+
+  var i = 0;
+  function peek() {
+    while (i < s.length && /\s/.test(s.charAt(i))) i++;
+    return i < s.length ? s.charAt(i) : "";
+  }
+  function eat(ch) {
+    if (peek() === ch) {
+      i++;
+      return true;
+    }
+    return false;
+  }
+
+  function parseNumber() {
+    peek();
+    var start = i;
+    if (i < s.length && (s.charAt(i) === "+" || s.charAt(i) === "-")) {
+      /* 부호는 unary 에서 처리 */
+    }
+    while (i < s.length && /[0-9a-fA-FhHbBoOxX_]/.test(s.charAt(i))) i++;
+    var tok = s.slice(start, i);
+    if (!tok) return _fail("Invalid expression");
+    var n = RU.parseInteger(tok);
+    if (!n.ok) return n;
+    return { ok: true, value: n.value, text: tok };
+  }
+
+  function parseFactor() {
+    peek();
+    if (eat("+")) return parseFactor();
+    if (eat("-")) {
+      var f = parseFactor();
+      if (!f.ok) return f;
+      return { ok: true, value: -f.value };
+    }
+    if (eat("(")) {
+      var inner = parseAdd();
+      if (!inner.ok) return inner;
+      if (!eat(")")) return _fail("Missing )");
+      return inner;
+    }
+    return parseNumber();
+  }
+
+  function parseMul() {
+    var left = parseFactor();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      var op = "";
+      if (eat("*")) op = "*";
+      else if (eat("/")) op = "/";
+      else break;
+      var right = parseFactor();
+      if (!right.ok) return right;
+      if (op === "*") left = { ok: true, value: left.value * right.value };
+      else {
+        if (right.value === 0n) return _fail("Division by zero");
+        left = { ok: true, value: left.value / right.value };
+      }
+    }
+    return left;
+  }
+
+  function parseAdd() {
+    var left = parseMul();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      var op = "";
+      if (eat("+")) op = "+";
+      else if (eat("-")) op = "-";
+      else break;
+      var right = parseMul();
+      if (!right.ok) return right;
+      if (op === "+") left = { ok: true, value: left.value + right.value };
+      else left = { ok: true, value: left.value - right.value };
+    }
+    return left;
+  }
+
+  var result = parseAdd();
+  if (!result.ok) return result;
+  peek();
+  if (i < s.length) return _fail("Invalid expression");
+  return {
+    ok: true,
+    kind: "int",
+    value: result.value,
+    base: 16,
+    source: "expr",
+    expr: s.replace(/\s+/g, " ")
+  };
+};
+
 RU.parseBinaryBits = function (raw) {
   if (raw == null) return _fail("Empty input");
   var s = String(raw).trim().replace(/[\s_]/g, "");
@@ -210,6 +328,12 @@ RU.analyzeInput = function (raw, force) {
   }
 
   /* ---- auto: 긴 덤프도 선형 스캔으로 판별 ---- */
+
+  /* 주소 계산: 0x401C04+7 → 0x401C0B. HEX 덤프 41-42-43-44 보다 먼저 보면 안 되므로 looksLike 로 걸러짐. */
+  if (force === "auto" && RU.looksLikeExpression(t)) {
+    var ex = RU.parseExpression(t);
+    if (ex.ok) return ex;
+  }
 
   /* C-style \x41\x42 */
   if (/\\x[0-9a-fA-F]{2}/i.test(t)) {

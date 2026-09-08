@@ -42,6 +42,7 @@
     </div>
     <div class="examples">
       <span>Examples</span>
+      <button type="button" class="example-btn" data-example="0x401C04+7">0x401C04+7</button>
       <button type="button" class="example-btn" data-example="0xDEADBEEF">0xDEADBEEF</button>
       <button type="button" class="example-btn" data-example="0xFFFFFFFF">0xFFFFFFFF</button>
       <button type="button" class="example-btn" data-example="0xFFFFFFFFFFFFFFFF">0xFFFFFFFFFFFFFFFF</button>
@@ -59,6 +60,7 @@
   <div class="layout">
     <nav class="sidebar" id="sidebar">
       <button type="button" class="nav-btn active" data-tool="convert">Quick Convert<span class="nav-ko">빠른 변환</span></button>
+      <button type="button" class="nav-btn" data-tool="address">Address<span class="nav-ko">주소 더하기</span></button>
       <button type="button" class="nav-btn" data-tool="bitwise">Bitwise<span class="nav-ko">비트 연산</span></button>
       <button type="button" class="nav-btn" data-tool="shift">Shift / Rotate<span class="nav-ko">밀기 / 회전</span></button>
       <button type="button" class="nav-btn" data-tool="xor">XOR<span class="nav-ko">배타적 논리합</span></button>
@@ -77,8 +79,48 @@
         <h2>Quick Convert <small>빠른 변환</small></h2>
         <p class="hint">
           상단 Universal Input 에 짧은 상수든 긴 덤프든 붙여넣으면 HEX / DEC / BIN / OCT / ASCII 를 한 번에 보여준다.
-          길이에 64bit 제한이 없다. 헤더의 8 / 16 / 32 / 64 는 레지스터 하위 비트(signed/unsigned) 해석용이다. Ctrl+Enter 또는 Calculate.
+          주소 더하기도 된다. 예: <code>0x401C04+7</code> → <code>0x401C0B</code>.
+          헤더의 8 / 16 / 32 / 64 는 레지스터 하위 비트 해석용. Ctrl+Enter 또는 Calculate.
         </p>
+      </section>
+
+      <section class="panel" id="panel-address">
+        <h2>Address <small>주소 더하기 / 빼기</small></h2>
+        <p class="hint">
+          베이스 주소에 오프셋을 더하거나 뺀다. 비트 폭으로 자르지 않는다.
+          예: 0x401C04 + 7 = 0x401C0B
+        </p>
+        <div class="form-row">
+          <div class="field">
+            <label for="ad-expr">식 (붙여넣기)</label>
+            <input type="text" id="ad-expr" spellcheck="false" autocomplete="off" placeholder="0x401C04 + 7">
+            <div class="error" id="ad-expr-err"></div>
+          </div>
+        </div>
+        <p class="hint">또는 칸을 나눠서:</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="ad-a">베이스 주소</label>
+            <input type="text" id="ad-a" spellcheck="false" autocomplete="off" placeholder="0x401C04" value="0x401C04">
+            <div class="error" id="ad-a-err"></div>
+          </div>
+          <div class="field narrow">
+            <label for="ad-op">연산</label>
+            <select id="ad-op">
+              <option value="+" selected>+ 더하기</option>
+              <option value="-">− 빼기</option>
+              <option value="*">× 곱하기</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ad-b">오프셋</label>
+            <input type="text" id="ad-b" spellcheck="false" autocomplete="off" placeholder="7" value="7">
+            <div class="error" id="ad-b-err"></div>
+          </div>
+        </div>
+        <div class="error" id="ad-err"></div>
+        <pre class="dump" id="ad-proof"></pre>
+        <div id="ad-out"></div>
       </section>
 
       <section class="panel" id="panel-bitwise">
@@ -481,6 +523,7 @@
         <h3>위쪽 Universal Input</h3>
         <p>아무거나 붙여넣으면 HEX·10진·2진·8진·문자로 동시에 보여 준다. 길어도 된다.</p>
         <ul class="usage-list">
+          <li>예: <code>0x401C04+7</code> → <code>0x401C0B</code> (주소 더하기)</li>
           <li>예: <code>0x41424344</code> → 문자 <code>ABCD</code>, 리틀엔디안 <code>44 43 42 41</code></li>
           <li>예: <code>41 42 43 44</code> 처럼 공백 있는 HEX 덤프도 인식</li>
           <li>예: <code>01000001</code> 긴 0/1 은 2진으로 본다</li>
@@ -498,6 +541,13 @@
           <p>상단 입력칸이 본체. 상수를 하나 만났을 때 제일 먼저 여기.</p>
           <p class="usage-when">언제: <code>cmp eax, 0x41424344</code> 의 값이 문자인지, 엔디안을 바꾸면 뭔지 보고 싶을 때</p>
           <button type="button" class="jump-tool" data-jump="convert">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Address — 주소 더하기</h4>
+          <p>베이스 주소 + 오프셋. 비트 폭으로 자르지 않는다. <code>0x401C04 + 7 = 0x401C0B</code> 를 10진과 함께 보여 줘서 증명할 수 있다.</p>
+          <p class="usage-when">언제: jmp/call 목적지, <code>base + i*4</code>, 구조체 필드 오프셋</p>
+          <button type="button" class="jump-tool" data-jump="address">열기</button>
         </article>
 
         <article class="usage-card">

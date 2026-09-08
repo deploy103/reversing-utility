@@ -42,6 +42,24 @@ def parse_auto(raw):
         if len(cleaned) >= 2 and len(cleaned) % 2 == 0 and re.fullmatch(r"[0-9a-fA-F]+", cleaned):
             return bytes.fromhex(cleaned), None
 
+    if re.search(r"[+*]", s) or re.search(r"[0-9a-fA-FxX]\s*-\s*[0-9]", s):
+        try:
+            def _tok(m):
+                t = m.group(0)
+                if t.lower().startswith("0x"):
+                    return str(int(t, 16))
+                if t.lower().startswith("0b"):
+                    return str(int(t, 2))
+                if t.lower().startswith("0o"):
+                    return str(int(t, 8))
+                return t
+            expr = re.sub(r"0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+", _tok, compact)
+            if re.fullmatch(r"[0-9+\-*/()]+", expr):
+                n = eval(expr, {"__builtins__": {}}, {})
+                return _int_to_bytes(int(n)), None
+        except Exception:
+            pass
+
     if re.fullmatch(r"[-+]?0[xX][0-9a-fA-F]+", compact):
         return _int_to_bytes(int(compact, 16)), None
     if re.fullmatch(r"[-+]?0[bB][01]+", compact):

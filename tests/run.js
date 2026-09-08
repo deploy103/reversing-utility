@@ -184,6 +184,19 @@ var q32 = RU.quickConvert(RU.normalizeAnalysis(RU.analyzeInput("0xFFFFFFFF"), 32
 eq(q32.signed, "-1", "quick convert 0xFFFFFFFF 32bit signed = -1");
 eq(q32.unsigned, "4294967295", "quick convert 0xFFFFFFFF unsigned");
 
+console.log("\n== Address expression ==");
+var add = RU.parseExpression("0x401C04 + 7");
+eq(add.ok, true, "parse 0x401C04 + 7");
+eq(add.value, 0x401c0bn, "0x401C04 + 7 = 0x401C0B");
+eq(RU.formatHexFree(add.value), "0x401C0B", "hex 0x401C0B");
+eq(RU.parseExpression("0x401C04+7").value, 0x401c0bn, "no spaces");
+eq(RU.parseExpression("0x401C0B - 0x401C04").value, 7n, "subtract addresses");
+eq(RU.parseExpression("0x401000 + 4*8").value, 0x401000n + 32n, "base + index*scale");
+var aAdd = RU.analyzeInput("0x401C04+7", "auto");
+eq(aAdd.source, "expr", "auto detects expression");
+eq(aAdd.value, 0x401c0bn, "auto value");
+ok(!RU.looksLikeExpression("41-42-43-44"), "hex dump with dashes is not expression");
+
 console.log("\n== Long strings / unlimited bases ==");
 var bare = RU.analyzeInput("41424344", "auto");
 eq(bare.kind, "bytes", "41424344 auto is hex bytes not decimal");
