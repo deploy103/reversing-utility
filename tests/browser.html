@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reversing Utility — self test</title>
+  <style>
+    body { font-family: ui-monospace, Consolas, monospace; background: #0d1117; color: #e6edf3; padding: 16px; }
+    .pass { color: #3fb950; }
+    .fail { color: #f85149; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Self test</h1>
+  <p>file:// 에서 이 파일을 열어도 된다. 계산 코어만 검사하며 네트워크를 쓰지 않는다.</p>
+  <pre id="out">running...</pre>
+  <script src="../js/utils.js"></script>
+  <script src="../js/parser.js"></script>
+  <script src="../js/bitwise.js"></script>
+  <script src="../js/endian.js"></script>
+  <script src="../js/xor.js"></script>
+  <script src="../js/converter.js"></script>
+  <script>
+    (function () {
+      var lines = [];
+      var failed = 0;
+      var passed = 0;
+      function eq(actual, expected, name) {
+        var a = typeof actual === "bigint" ? actual.toString() : String(actual);
+        var e = typeof expected === "bigint" ? expected.toString() : String(expected);
+        if (a === e) {
+          passed++;
+          lines.push("PASS  " + name);
+        } else {
+          failed++;
+          lines.push("FAIL  " + name + "  expected=" + e + " actual=" + a);
+        }
+      }
+      eq(RU.xor(0x41n, 0x20n, 8), 0x61n, "0x41 XOR 0x20 = 0x61");
+      eq(RU.and(0xffn, 0x0fn, 8), 0x0fn, "0xFF AND 0x0F = 0x0F");
+      eq(RU.or(0xf0n, 0x0fn, 8), 0xffn, "0xF0 OR 0x0F = 0xFF");
+      eq(RU.rotateLeft(0x81n, 1, 8), 0x03n, "ROL8(0x81, 1) = 0x03");
+      eq(RU.rotateRight(0x01n, 1, 8), 0x80n, "ROR8(0x01, 1) = 0x80");
+      eq(RU.toSigned(0xffn, 8), -1n, "0xFF signed 8bit = -1");
+      eq(RU.bytesToHex(RU.reverseEndian([0x12, 0x34, 0x56, 0x78], 4).bytes), "78 56 34 12", "endian");
+      eq(RU.asciiToHex("ABC"), "41 42 43", "ABC");
+      eq(RU.parseInteger("0xFFFFFFFFFFFFFFFF").value, 0xffffffffffffffffn, "parse 64bit");
+      eq(RU.toSigned(0xffffffffn, 32), -1n, "0xFFFFFFFF signed 32");
+      eq(RU.toSigned(0x80000000n, 32), -2147483648n, "0x80000000 signed 32");
+      eq(RU.not(0n, 64), 0xffffffffffffffffn, "NOT 64");
+      eq(RU.sar(0x80n, 1, 8), 0xc0n, "SAR8");
+      eq(RU.byteSwap(0x12345678n, 32), 0x78563412n, "BSWAP32");
+      var q = RU.quickConvert(RU.normalizeAnalysis(RU.analyzeInput("0x41424344"), 32));
+      eq(q.ascii, "ABCD", "quick ASCII");
+      eq(q.littleEndian, "44 43 42 41", "quick LE");
+      var summary = passed + " passed, " + failed + " failed";
+      lines.push("");
+      lines.push(summary);
+      var out = document.getElementById("out");
+      out.textContent = lines.join("\n");
+      out.className = failed ? "fail" : "pass";
+      document.title = (failed ? "FAIL" : "PASS") + " — " + summary;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Reversing Utility</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Reversing Utility</h1>
+    <div class="header-right">
+      <div class="width-group" data-role="width" title="Bit width">
+        <button type="button" data-width="8">8</button>
+        <button type="button" data-width="16">16</button>
+        <button type="button" data-width="32" class="active">32</button>
+        <button type="button" data-width="64">64</button>
+      </div>
+      <button type="button" class="theme-btn" id="theme-toggle">Light</button>
+    </div>
+  </header>
+
+  <section class="universal">
+    <div class="universal-top">
+      <label for="u-input">Universal Input</label>
+      <textarea id="u-input" spellcheck="false" autocomplete="off" rows="3"
+                placeholder="아무거나 붙여넣기: 0x41424344  ·  긴 HEX 덤프  ·  01000001…  ·  10진/8진  ·  ASCII. 길어도 Auto 가 HEX/DEC/BIN/OCT/ASCII 를 한 번에 만든다."></textarea>
+      <button type="button" class="calc-btn" id="u-calc">Calculate</button>
+    </div>
+    <div class="universal-top">
+      <span class="muted" style="color:var(--muted)">Format</span>
+      <div class="fmt-group" id="u-format">
+        <button type="button" data-fmt="auto" class="active">Auto</button>
+        <button type="button" data-fmt="hex">HEX</button>
+        <button type="button" data-fmt="dec">DEC</button>
+        <button type="button" data-fmt="bin">BIN</button>
+        <button type="button" data-fmt="oct">OCT</button>
+        <button type="button" data-fmt="ascii">ASCII</button>
+        <button type="button" data-fmt="bytes">Bytes</button>
+      </div>
+    </div>
+    <div class="examples">
+      <span>Examples</span>
+      <button type="button" class="example-btn" data-example="0xDEADBEEF">0xDEADBEEF</button>
+      <button type="button" class="example-btn" data-example="0xFFFFFFFF">0xFFFFFFFF</button>
+      <button type="button" class="example-btn" data-example="0xFFFFFFFFFFFFFFFF">0xFFFFFFFFFFFFFFFF</button>
+      <button type="button" class="example-btn" data-example="41 42 43 44">41 42 43 44</button>
+      <button type="button" class="example-btn" data-example="\x66\x6c\x61\x67">\x66\x6c\x61\x67</button>
+      <button type="button" class="example-btn" data-example="Hello World">Hello World</button>
+      <button type="button" class="example-btn" data-example="01000001 01000010 01000011">01000001 01000010 01000011</button>
+      <button type="button" class="example-btn" data-example="48656c6c6f20576f726c64212048656c6c6f20576f726c64212048656c6c6f20576f726c6421">long HEX</button>
+    </div>
+    <div class="detected" id="u-detected"></div>
+    <div class="error" id="u-error"></div>
+    <div class="result-grid" id="u-results"></div>
+  </section>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <button type="button" class="nav-btn active" data-tool="convert">Quick Convert<span class="nav-ko">빠른 변환</span></button>
+      <button type="button" class="nav-btn" data-tool="bitwise">Bitwise<span class="nav-ko">비트 연산</span></button>
+      <button type="button" class="nav-btn" data-tool="shift">Shift / Rotate<span class="nav-ko">밀기 / 회전</span></button>
+      <button type="button" class="nav-btn" data-tool="xor">XOR<span class="nav-ko">배타적 논리합</span></button>
+      <button type="button" class="nav-btn" data-tool="bytes">String / Bytes<span class="nav-ko">문자 ↔ 바이트</span></button>
+      <button type="button" class="nav-btn" data-tool="endian">Endian<span class="nav-ko">바이트 순서</span></button>
+      <button type="button" class="nav-btn" data-tool="integer">Integer<span class="nav-ko">정수 / 2의 보수</span></button>
+      <button type="button" class="nav-btn" data-tool="encoding">Encoding<span class="nav-ko">Base64 / URL</span></button>
+      <button type="button" class="nav-btn" data-tool="dump">HEX Dump<span class="nav-ko">헥스 덤프</span></button>
+      <button type="button" class="nav-btn" data-tool="bits">Bit Viewer<span class="nav-ko">비트 자리 보기</span></button>
+      <button type="button" class="nav-btn nav-usage" data-tool="usage">Usage<span class="nav-ko">사용법 · 용어</span></button>
+    </nav>
+
+    <main class="main">
+      <!-- Quick Convert: universal 영역이 본체. 여기서는 안내만. -->
+      <section class="panel active" id="panel-convert">
+        <h2>Quick Convert <small>빠른 변환</small></h2>
+        <p class="hint">
+          상단 Universal Input 에 짧은 상수든 긴 덤프든 붙여넣으면 HEX / DEC / BIN / OCT / ASCII 를 한 번에 보여준다.
+          길이에 64bit 제한이 없다. 헤더의 8 / 16 / 32 / 64 는 레지스터 하위 비트(signed/unsigned) 해석용이다. Ctrl+Enter 또는 Calculate.
+        </p>
+      </section>
+
+      <section class="panel" id="panel-bitwise">
+        <h2>Bitwise Calculator <small>비트 연산</small></h2>
+        <p class="hint">A, B 와 bit width 로 AND / OR / XOR / NOT / ADD / SUB / MUL (mod 2^N) 을 동시에 계산한다. 전부 BigInt.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="bw-a">A</label>
+            <input type="text" id="bw-a" spellcheck="false" autocomplete="off" placeholder="0xF0">
+            <div class="error" id="bw-a-err"></div>
+          </div>
+          <div class="field">
+            <label for="bw-b">B</label>
+            <input type="text" id="bw-b" spellcheck="false" autocomplete="off" placeholder="0x0F">
+            <div class="error" id="bw-b-err"></div>
+          </div>
+          <div class="field narrow">
+            <label>Width</label>
+            <div class="width-group" data-role="width">
+              <button type="button" data-width="8">8</button>
+              <button type="button" data-width="16">16</button>
+              <button type="button" data-width="32" class="active">32</button>
+              <button type="button" data-width="64">64</button>
+            </div>
+          </div>
+        </div>
+        <div class="op-grid" id="bw-ops"></div>
+      </section>
+
+      <section class="panel" id="panel-shift">
+        <h2>Shift / Rotate <small>밀기 / 회전</small></h2>
+        <p class="hint">SHL / SHR / SAR / ROL / ROR. Rotate 는 선택한 bit width 로 wrap 된다.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="sh-val">Value</label>
+            <input type="text" id="sh-val" spellcheck="false" autocomplete="off" placeholder="0x81">
+            <div class="error" id="sh-val-err"></div>
+          </div>
+          <div class="field narrow">
+            <label for="sh-count">Shift Count</label>
+            <input type="text" id="sh-count" spellcheck="false" autocomplete="off" placeholder="1" value="1">
+            <div class="error" id="sh-count-err"></div>
+          </div>
+          <div class="field narrow">
+            <label>Width</label>
+            <div class="width-group" data-role="width">
+              <button type="button" data-width="8">8</button>
+              <button type="button" data-width="16">16</button>
+              <button type="button" data-width="32" class="active">32</button>
+              <button type="button" data-width="64">64</button>
+            </div>
+          </div>
+        </div>
+        <div class="op-grid" id="sh-ops"></div>
+      </section>
+
+      <section class="panel" id="panel-xor">
+        <h2>XOR Tool <small>배타적 논리합</small></h2>
+
+        <h3>Numeric XOR</h3>
+        <p class="hint">정수 XOR. Bitwise 탭의 XOR 과 같다.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="xn-a">Value A</label>
+            <input type="text" id="xn-a" spellcheck="false" autocomplete="off" placeholder="0x41">
+            <div class="error" id="xn-a-err"></div>
+          </div>
+          <div class="field">
+            <label for="xn-b">Value B</label>
+            <input type="text" id="xn-b" spellcheck="false" autocomplete="off" placeholder="0x20">
+            <div class="error" id="xn-b-err"></div>
+          </div>
+        </div>
+        <div class="op-grid" id="xn-ops"></div>
+
+        <h3>String / Byte XOR</h3>
+        <p class="hint">ASCII XOR ASCII, HEX XOR HEX, ASCII XOR HEX Key, HEX XOR ASCII Key. 길이가 같아야 한다.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="xs-data">Data</label>
+            <textarea id="xs-data" spellcheck="false" placeholder="Hello"></textarea>
+            <div class="error" id="xs-data-err"></div>
+          </div>
+          <div class="field">
+            <label for="xs-key">Key</label>
+            <textarea id="xs-key" spellcheck="false" placeholder="key!!"></textarea>
+            <div class="error" id="xs-key-err"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field narrow">
+            <label for="xs-data-fmt">Data format</label>
+            <select id="xs-data-fmt">
+              <option value="ascii">ASCII</option>
+              <option value="hex">HEX</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="xs-key-fmt">Key format</label>
+            <select id="xs-key-fmt">
+              <option value="ascii">ASCII</option>
+              <option value="hex">HEX</option>
+            </select>
+          </div>
+        </div>
+        <div id="xs-out"></div>
+
+        <h3>Repeating-key XOR</h3>
+        <p class="hint">키가 데이터 길이만큼 반복된다. 예: Data <code>48 65 6c 6c 6f</code> / Key <code>KEY</code>.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="xr-data">Data</label>
+            <textarea id="xr-data" spellcheck="false" placeholder="48 65 6c 6c 6f"></textarea>
+            <div class="error" id="xr-data-err"></div>
+          </div>
+          <div class="field">
+            <label for="xr-key">Key</label>
+            <textarea id="xr-key" spellcheck="false" placeholder="KEY"></textarea>
+            <div class="error" id="xr-key-err"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field narrow">
+            <label for="xr-data-fmt">Data format</label>
+            <select id="xr-data-fmt">
+              <option value="hex" selected>HEX</option>
+              <option value="ascii">ASCII</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="xr-key-fmt">Key format</label>
+            <select id="xr-key-fmt">
+              <option value="ascii" selected>ASCII</option>
+              <option value="hex">HEX</option>
+            </select>
+          </div>
+        </div>
+        <div id="xr-out"></div>
+
+        <h3>Single-byte XOR Bruteforce</h3>
+        <p class="hint">키 0x00–0xFF 전부 시도. printable ASCII 점수 높은 순.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="xb-data">Data</label>
+            <textarea id="xb-data" spellcheck="false" placeholder="1a 0c 09 06 06"></textarea>
+            <div class="error" id="xb-data-err"></div>
+          </div>
+          <div class="field narrow">
+            <label for="xb-fmt">Format</label>
+            <select id="xb-fmt">
+              <option value="hex">HEX</option>
+              <option value="ascii">ASCII</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" id="xb-table"></div>
+      </section>
+
+      <section class="panel" id="panel-bytes">
+        <h2>String / Bytes <small>문자 ↔ 바이트</small></h2>
+        <p class="hint">ASCII ↔ HEX ↔ Binary. HEX 는 41424344, 41 42 43 44, 41:42:43:44, 0x41 0x42, \x41\x42 모두 허용.</p>
+        <div class="form-row">
+          <div class="field narrow">
+            <label for="by-mode">Conversion</label>
+            <select id="by-mode">
+              <option value="ascii-hex">ASCII → HEX</option>
+              <option value="hex-ascii">HEX → ASCII</option>
+              <option value="ascii-bin">ASCII → Binary</option>
+              <option value="bin-ascii">Binary → ASCII</option>
+              <option value="hex-bin">HEX → Binary</option>
+              <option value="bin-hex">Binary → HEX</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="by-in">Input</label>
+            <textarea id="by-in" spellcheck="false" placeholder="ABC"></textarea>
+            <div class="error" id="by-in-err"></div>
+          </div>
+        </div>
+        <div id="by-out"></div>
+
+        <h3>Byte padding</h3>
+        <div class="form-row">
+          <div class="field">
+            <label for="pad-in">HEX bytes</label>
+            <input type="text" id="pad-in" spellcheck="false" autocomplete="off" placeholder="41 42">
+            <div class="error" id="pad-in-err"></div>
+          </div>
+          <div class="field narrow">
+            <label for="pad-len">Pad to (bytes)</label>
+            <select id="pad-len">
+              <option>2</option>
+              <option selected>4</option>
+              <option>8</option>
+              <option>16</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="pad-side">Side</label>
+            <select id="pad-side">
+              <option value="left">Left (MSB 00)</option>
+              <option value="right">Right (LSB 00)</option>
+            </select>
+          </div>
+        </div>
+        <div id="pad-out"></div>
+      </section>
+
+      <section class="panel" id="panel-endian">
+        <h2>Endian Converter <small>바이트 순서</small></h2>
+        <p class="hint">Big Endian ↔ Little Endian. 2 / 4 / 8 byte 단위. 예: 12 34 56 78 → 78 56 34 12.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="en-in">HEX bytes</label>
+            <input type="text" id="en-in" spellcheck="false" autocomplete="off" placeholder="12 34 56 78">
+            <div class="error" id="en-in-err"></div>
+          </div>
+          <div class="field narrow">
+            <label for="en-unit">Unit</label>
+            <select id="en-unit">
+              <option value="2">2 bytes</option>
+              <option value="4" selected>4 bytes</option>
+              <option value="8">8 bytes</option>
+            </select>
+          </div>
+        </div>
+        <div id="en-out"></div>
+
+        <h3>Integer BSWAP</h3>
+        <p class="hint">선택한 bit width 의 바이트 순서를 뒤집는다. 32bit 0x12345678 → 0x78563412.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="bs-in">Value</label>
+            <input type="text" id="bs-in" spellcheck="false" autocomplete="off" placeholder="0x12345678">
+            <div class="error" id="bs-in-err"></div>
+          </div>
+        </div>
+        <div id="bs-out"></div>
+      </section>
+
+      <section class="panel" id="panel-integer">
+        <h2>Integer Interpreter <small>정수 / 2의 보수</small></h2>
+        <p class="hint">같은 비트 패턴을 signed / unsigned / HEX / BIN 으로 본다. 폭에 안 맞으면 하위 비트를 자르고 truncated 표시.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="int-in">Value</label>
+            <input type="text" id="int-in" spellcheck="false" autocomplete="off" placeholder="0xFFFFFFFF">
+            <div class="error" id="int-in-err"></div>
+          </div>
+        </div>
+        <div class="table-wrap" id="int-table"></div>
+
+        <h3>Two's Complement</h3>
+        <p class="hint">Original, Binary, 2의 보수 (부정), Signed / Unsigned 해석.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="tc-in">Value</label>
+            <input type="text" id="tc-in" spellcheck="false" autocomplete="off" placeholder="5">
+            <div class="error" id="tc-in-err"></div>
+          </div>
+        </div>
+        <div id="tc-out"></div>
+
+        <h3>Bit extras</h3>
+        <p class="hint">Nibble swap, bit reverse, popcount, parity. 입력은 위의 Integer Value 를 사용한다.</p>
+        <div id="ex-out"></div>
+      </section>
+
+      <section class="panel" id="panel-encoding">
+        <h2>Encoding <small>Base64 / URL</small></h2>
+        <p class="hint">보조 기능. Base64 / URL. 브라우저 내장 API 만 사용하며 네트워크 요청은 없다.</p>
+        <div class="split-2">
+          <div>
+            <h3>Base64 Encode</h3>
+            <div class="field">
+              <label for="b64e-in">Input (ASCII / bytes as text)</label>
+              <textarea id="b64e-in" spellcheck="false" placeholder="Hello"></textarea>
+            </div>
+            <div id="b64e-out"></div>
+          </div>
+          <div>
+            <h3>Base64 Decode</h3>
+            <div class="field">
+              <label for="b64d-in">Base64</label>
+              <textarea id="b64d-in" spellcheck="false" placeholder="SGVsbG8="></textarea>
+              <div class="error" id="b64d-err"></div>
+            </div>
+            <div id="b64d-out"></div>
+          </div>
+          <div>
+            <h3>URL Encode</h3>
+            <div class="field">
+              <label for="urle-in">Input</label>
+              <textarea id="urle-in" spellcheck="false" placeholder="a b=c"></textarea>
+            </div>
+            <div id="urle-out"></div>
+          </div>
+          <div>
+            <h3>URL Decode</h3>
+            <div class="field">
+              <label for="urld-in">Input</label>
+              <textarea id="urld-in" spellcheck="false" placeholder="a%20b%3Dc"></textarea>
+              <div class="error" id="urld-err"></div>
+            </div>
+            <div id="urld-out"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-dump">
+        <h2>HEX Dump <small>헥스 덤프</small></h2>
+        <p class="hint">문자열 또는 HEX 를 hexdump 형식으로 보여준다.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="hd-in">Input</label>
+            <textarea id="hd-in" spellcheck="false" placeholder="Hello World"></textarea>
+            <div class="error" id="hd-in-err"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field narrow">
+            <label for="hd-fmt">Format</label>
+            <select id="hd-fmt">
+              <option value="ascii">ASCII</option>
+              <option value="hex">HEX</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="hd-width">Bytes / line</label>
+            <select id="hd-width">
+              <option value="8">8</option>
+              <option value="16" selected>16</option>
+            </select>
+          </div>
+        </div>
+        <div class="inline-copy">
+          <pre class="dump" id="hd-out"></pre>
+          <button type="button" class="copy-btn" data-copy="#hd-out">Copy</button>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-bits">
+        <h2>Bit Viewer <small>비트 자리 보기</small></h2>
+        <p class="hint">어셈블리 bit mask 확인용. 예: 0xA5 → 7..0 = 1 0 1 0 0 1 0 1</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="bv-in">Value</label>
+            <input type="text" id="bv-in" spellcheck="false" autocomplete="off" placeholder="0xA5">
+            <div class="error" id="bv-in-err"></div>
+          </div>
+        </div>
+        <div id="bv-meta"></div>
+        <div class="bit-table" id="bv-table"></div>
+      </section>
+
+      <section class="panel panel-usage" id="panel-usage">
+        <h2>Usage <small>사용법 · 용어 찾기</small></h2>
+        <p class="hint">영어 이름이 기억 안 나면 여기만 보면 된다. 단어 뜻을 먼저 보고, 아래에서 도구를 고른다.</p>
+
+        <h3>자주 까먹는 단어</h3>
+        <div class="table-wrap">
+          <table class="glossary">
+            <thead>
+              <tr><th>영어</th><th>한국어</th><th>한 줄 설명</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>HEX</td><td>16진수</td><td>0~9, A~F. 예: 0x41 = 65 = 문자 A</td></tr>
+              <tr><td>DEC</td><td>10진수</td><td>평소에 쓰는 숫자. 65, 1094861636</td></tr>
+              <tr><td>BIN</td><td>2진수</td><td>0과 1. 컴퓨터가 실제로 다루는 비트</td></tr>
+              <tr><td>OCT</td><td>8진수</td><td>0~7. 유닉스 권한 0755 같은 데 나옴</td></tr>
+              <tr><td>ASCII</td><td>문자</td><td>숫자 코드를 글자로. 0x41 → A, 0x20 → 공백</td></tr>
+              <tr><td>Bytes</td><td>바이트 배열</td><td>8비트 묶음. 41 42 43 44</td></tr>
+              <tr><td>Bit</td><td>비트</td><td>0 또는 1 한 자리. 8비트가 1바이트</td></tr>
+              <tr><td>Nibble</td><td>니블</td><td>4비트 = HEX 숫자 하나. 0xA 는 1010</td></tr>
+              <tr><td>Signed</td><td>부호 있는 정수</td><td>음수 가능. 8bit 0xFF = -1</td></tr>
+              <tr><td>Unsigned</td><td>부호 없는 정수</td><td>0 이상만. 8bit 0xFF = 255</td></tr>
+              <tr><td>Endian</td><td>엔디안</td><td>바이트를 앞에 둘지 뒤에 둘지. intel은 보통 Little</td></tr>
+              <tr><td>Big Endian</td><td>빅 엔디안</td><td>큰 자리 바이트가 먼저. 12 34 56 78</td></tr>
+              <tr><td>Little Endian</td><td>리틀 엔디안</td><td>작은 자리 바이트가 먼저. 78 56 34 12</td></tr>
+              <tr><td>AND</td><td>논리곱</td><td>둘 다 1이어야 1. and eax, 0xff → 하위 1바이트만 남김</td></tr>
+              <tr><td>OR</td><td>논리합</td><td>하나라도 1이면 1. 비트를 켜는 용도</td></tr>
+              <tr><td>XOR</td><td>배타적 논리합</td><td>서로 다르면 1. 암호/난독화에 매우 자주 나옴</td></tr>
+              <tr><td>NOT</td><td>비트 반전</td><td>0↔1. 1의 보수</td></tr>
+              <tr><td>SHL</td><td>왼쪽 시프트</td><td>비트를 왼쪽으로 밀기. 빈자리는 0. 대략 ×2</td></tr>
+              <tr><td>SHR</td><td>오른쪽 시프트</td><td>오른쪽으로 밀기. 빈자리는 0. 대략 ÷2</td></tr>
+              <tr><td>SAR</td><td>산술 오른쪽 시프트</td><td>SHR인데 부호 비트(맨 앞)를 유지. 음수가 음수로 남음</td></tr>
+              <tr><td>ROL / ROR</td><td>왼쪽/오른쪽 회전</td><td>밀려 나간 비트가 반대쪽으로 다시 들어옴</td></tr>
+              <tr><td>Two's Complement</td><td>2의 보수</td><td>음수 표현. 비트 뒤집고 +1. 5 → -5 비트패턴</td></tr>
+              <tr><td>BSWAP</td><td>바이트 스왑</td><td>정수 안의 바이트 순서를 뒤집음. 엔디안 변환</td></tr>
+              <tr><td>Popcount</td><td>1의 개수</td><td>켜진 비트 몇 개인지</td></tr>
+              <tr><td>Parity</td><td>패리티</td><td>1의 개수가 짝수인지 홀수인지</td></tr>
+              <tr><td>Base64</td><td>베이스64</td><td>바이너리를 글자(A-Za-z0-9+/)로 인코딩</td></tr>
+              <tr><td>Mask</td><td>마스크</td><td>원하는 비트만 남기는 값. 0xFF, 0x0F 등</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>위쪽 Universal Input</h3>
+        <p>아무거나 붙여넣으면 HEX·10진·2진·8진·문자로 동시에 보여 준다. 길어도 된다.</p>
+        <ul class="usage-list">
+          <li>예: <code>0x41424344</code> → 문자 <code>ABCD</code>, 리틀엔디안 <code>44 43 42 41</code></li>
+          <li>예: <code>41 42 43 44</code> 처럼 공백 있는 HEX 덤프도 인식</li>
+          <li>예: <code>01000001</code> 긴 0/1 은 2진으로 본다</li>
+          <li>형식이 애매하면 위 Format 버튼으로 HEX / DEC / BIN / OCT / ASCII 를 강제</li>
+          <li>헤더의 8/16/32/64 는 <strong>레지스터 폭</strong>이다. 전체 값은 잘리지 않고, 아래쪽에만 “32-bit signed” 같은 해석을 붙인다</li>
+          <li>계산: 입력 후 잠깐 기다리거나 <strong>Calculate</strong> / <strong>Ctrl+Enter</strong></li>
+          <li>결과 오른쪽 Copy. 화면이 잘려 보여도 Copy 는 전체</li>
+        </ul>
+        <button type="button" class="jump-tool" data-jump="convert">Quick Convert 열기</button>
+
+        <h3>각 메뉴가 하는 일</h3>
+
+        <article class="usage-card">
+          <h4>Quick Convert — 빠른 변환</h4>
+          <p>상단 입력칸이 본체. 상수를 하나 만났을 때 제일 먼저 여기.</p>
+          <p class="usage-when">언제: <code>cmp eax, 0x41424344</code> 의 값이 문자인지, 엔디안을 바꾸면 뭔지 보고 싶을 때</p>
+          <button type="button" class="jump-tool" data-jump="convert">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Bitwise — 비트 연산 (AND / OR / XOR / NOT)</h4>
+          <p>두 수 A, B 를 넣고 논리 연산을 한 번에 본다. 결과는 HEX·10진·2진.</p>
+          <p class="usage-when">언제: <code>and eax, 0xff</code> / <code>or al, 1</code> / <code>xor eax, 0x1337</code></p>
+          <button type="button" class="jump-tool" data-jump="bitwise">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Shift / Rotate — 밀기 / 회전</h4>
+          <p>SHL·SHR·SAR 는 밀기, ROL·ROR 는 회전. 비트 폭만큼 돌아간다.</p>
+          <p class="usage-when">언제: <code>rol eax, 5</code> / <code>shr al, 1</code> / <code>sar eax, 2</code></p>
+          <ul class="usage-list">
+            <li>ROL8(0x81, 1) = 0x03 &nbsp; (10000001 → 00000011)</li>
+            <li>ROR8(0x01, 1) = 0x80 &nbsp; (00000001 → 10000000)</li>
+          </ul>
+          <button type="button" class="jump-tool" data-jump="shift">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>XOR — 배타적 논리합</h4>
+          <p>숫자 XOR, 문자열 XOR, 키가 반복되는 XOR, 1바이트 키 전부 대입(브루트포스).</p>
+          <p class="usage-when">언제: 문자열이 이상하게 깨져 보이고, 키가 한 바이트거나 “KEY” 처럼 반복될 때. printable 점수 높은 후보가 위로 온다.</p>
+          <button type="button" class="jump-tool" data-jump="xor">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>String / Bytes — 문자 ↔ 바이트</h4>
+          <p>ABC ↔ 41 42 43, 문자 ↔ 2진. HEX 는 붙여쓰기, 공백, 콜론, \x41 모두 됨.</p>
+          <p class="usage-when">언제: 패킷/파일 앞부분을 글자로 읽고 싶을 때, 셸코드 HEX 를 ASCII 로 볼 때</p>
+          <button type="button" class="jump-tool" data-jump="bytes">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Endian — 바이트 순서</h4>
+          <p>12 34 56 78 → 78 56 34 12. 2/4/8 바이트 단위. BSWAP 은 정수 통째로 뒤집기.</p>
+          <p class="usage-when">언제: IDA/gdb 에서 본 eax 값과 메모리 덤프 순서가 안 맞을 때. x86은 보통 Little Endian.</p>
+          <button type="button" class="jump-tool" data-jump="endian">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Integer — 정수 / 2의 보수</h4>
+          <p>같은 비트를 8/16/32/64bit signed·unsigned 로 같이 본다. 2의 보수로 부호 반전도 함.</p>
+          <p class="usage-when">언제: <code>0xFFFFFFFF</code> 가 -1 인지 4294967295 인지, <code>cmp</code> 직후 조건을 볼 때</p>
+          <button type="button" class="jump-tool" data-jump="integer">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Encoding — Base64 / URL</h4>
+          <p>글자를 Base64 또는 URL 인코딩/디코딩. 보조 기능.</p>
+          <p class="usage-when">언제: 설정 문자열이 <code>SGVsbG8=</code> 처럼 보이거나, <code>%20</code> 이 섞여 있을 때</p>
+          <button type="button" class="jump-tool" data-jump="encoding">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>HEX Dump — 헥스 덤프</h4>
+          <p>왼쪽 주소, 가운데 HEX, 오른쪽 ASCII. 짧은 버퍼를 파일 덤프처럼 봄.</p>
+          <p class="usage-when">언제: 문자와 HEX 를 나란히 보고 싶을 때</p>
+          <button type="button" class="jump-tool" data-jump="dump">열기</button>
+        </article>
+
+        <article class="usage-card">
+          <h4>Bit Viewer — 비트 자리 보기</h4>
+          <p>어느 비트 번호가 1인지. <code>test eax, 0xA5</code> 마스크 분석.</p>
+          <p class="usage-when">언제: “7번 비트가 켜져 있나?” 를 눈으로 확인할 때</p>
+          <button type="button" class="jump-tool" data-jump="bits">열기</button>
+        </article>
+
+        <h3>입력 형식 치트시트</h3>
+        <div class="table-wrap">
+          <table class="glossary">
+            <thead>
+              <tr><th>이렇게 넣으면</th><th>이렇게 읽음</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>1234</code></td><td>10진수</td></tr>
+              <tr><td><code>0x1234</code> / <code>1234h</code></td><td>16진수</td></tr>
+              <tr><td><code>0b1010</code> / <code>1010b</code></td><td>2진수</td></tr>
+              <tr><td><code>0o755</code></td><td>8진수</td></tr>
+              <tr><td><code>41 42 43 44</code> / <code>41:42:43:44</code></td><td>HEX 바이트</td></tr>
+              <tr><td><code>\x41\x42</code></td><td>C 언어 이스케이프</td></tr>
+              <tr><td><code>Hello</code></td><td>ASCII 문자</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>단축키</h3>
+        <ul class="usage-list">
+          <li><strong>Enter</strong> — 한 줄 칸에서 계산</li>
+          <li><strong>Ctrl+Enter</strong> — 여러 줄(Universal Input)에서 계산</li>
+          <li>브라우저 기본 단축키(Ctrl+L 주소창 등)는 안 가로챔</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- ES module 금지: file:// CORS. 일반 script 순서 로드. -->
+  <script src="js/utils.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/bitwise.js"></script>
+  <script src="js/endian.js"></script>
+  <script src="js/xor.js"></script>
+  <script src="js/converter.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

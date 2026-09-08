@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+desktop.ini
+tests/_chrome-profile/
+tests/_ui.html
+tests/_ui.err
+tests/_dom.html
+tests/_dom.err

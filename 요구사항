@@ -1,0 +1,433 @@
+# Reversing Utility 요구사항
+
+## 1. 목적
+
+리버싱 및 CTF 문제 풀이 중 자주 등장하는 숫자, 바이트, 문자열 및 비트 연산을 하나의 로컬 웹페이지에서 수행하는 도구를 개발한다.
+
+인터넷이 없는 대회 환경에서도 사용할 수 있어야 한다.
+
+---
+
+## 2. 실행 방식
+
+사용자는 아래 파일을 더블클릭한다.
+
+```text
+index.html
+```
+
+브라우저가 열리고 즉시 사용할 수 있어야 한다.
+
+별도의 설치 과정은 없어야 한다.
+
+---
+
+## 3. 필수 기능
+
+### Universal Converter
+
+입력값:
+
+```text
+0x41424344
+```
+
+등을 입력했을 때 자동으로 아래 값을 표시한다.
+
+```text
+HEX
+Decimal
+Binary
+Octal
+ASCII
+Byte Array
+C Escape
+Python Bytes
+```
+
+---
+
+### Bitwise Calculator
+
+연산:
+
+```text
+AND
+OR
+XOR
+NOT
+```
+
+입력 A/B와 bit width를 설정한다.
+
+지원:
+
+```text
+8 / 16 / 32 / 64 bit
+```
+
+---
+
+### Shift Calculator
+
+```text
+SHL
+SHR
+SAR
+```
+
+지원.
+
+---
+
+### Rotate Calculator
+
+```text
+ROL
+ROR
+```
+
+지원.
+
+비트 폭:
+
+```text
+8 / 16 / 32 / 64
+```
+
+---
+
+### XOR Tool
+
+다음 기능을 제공한다.
+
+```text
+Number XOR
+Byte XOR
+String XOR
+Repeating-Key XOR
+Single-byte XOR Bruteforce
+```
+
+Bruteforce 결과는 printable 문자열을 위쪽에 배치한다.
+
+---
+
+### String Converter
+
+```text
+ASCII ↔ HEX
+ASCII ↔ BIN
+HEX ↔ BIN
+```
+
+---
+
+### Endian Converter
+
+```text
+Big Endian ↔ Little Endian
+```
+
+2/4/8 bytes 기준을 선택할 수 있다.
+
+---
+
+### Integer Interpreter
+
+동일한 값에 대해:
+
+```text
+Signed Integer
+Unsigned Integer
+HEX
+Binary
+```
+
+를 보여준다.
+
+지원:
+
+```text
+int8
+uint8
+int16
+uint16
+int32
+uint32
+int64
+uint64
+```
+
+---
+
+### Two's Complement
+
+사용자가 bit width와 값을 선택하면 2의 보수를 계산한다.
+
+---
+
+### Encoding Utilities
+
+```text
+Base64 Encode / Decode
+URL Encode / Decode
+```
+
+---
+
+## 4. Input Format
+
+숫자:
+
+```text
+1234
+0x1234
+1234h
+0b1010
+1010b
+0o755
+```
+
+HEX bytes:
+
+```text
+414243
+41 42 43
+41:42:43
+0x41 0x42 0x43
+\x41\x42\x43
+```
+
+모두 지원한다.
+
+---
+
+## 5. Quick Input Examples
+
+사용자가 아래 예제를 클릭하면 자동으로 입력란에 들어가도록 한다.
+
+```text
+0xDEADBEEF
+0xFFFFFFFF
+41 42 43 44
+\x66\x6c\x61\x67
+```
+
+---
+
+## 6. UI
+
+디자인 목표:
+
+```text
+빠르게 찾기
+빠르게 입력
+빠르게 복사
+```
+
+화려하게 만들 필요 없음.
+
+Desktop 우선.
+
+권장 구조:
+
+```text
+┌────────────────────────────────────────┐
+│ Reversing Utility                      │
+│ [ Universal Input                    ] │
+├────────────┬───────────────────────────┤
+│ Convert    │                           │
+│ Bitwise    │         Tool              │
+│ Shift      │                           │
+│ Rotate     │                           │
+│ XOR        │                           │
+│ Bytes      │                           │
+│ Endian     │                           │
+│ Integer    │                           │
+│ Encoding   │                           │
+└────────────┴───────────────────────────┘
+```
+
+---
+
+## 7. 결과 표시
+
+가능하면 HEX/DEC/BIN을 같이 보여준다.
+
+예:
+
+```text
+Result
+
+HEX     0x00000061
+DEC     97
+BIN     01100001
+ASCII   a
+```
+
+---
+
+## 8. Copy
+
+출력 결과마다:
+
+```text
+Copy
+```
+
+버튼을 제공한다.
+
+---
+
+## 9. 리버싱 친화 기능
+
+숫자 입력 옆에 bit width를 항상 표시한다.
+
+```text
+[8] [16] [32] [64]
+```
+
+가능하면 기본값:
+
+```text
+32 bit
+```
+
+---
+
+## 10. 64bit
+
+JavaScript Number를 이용해 64bit 값을 계산하지 않는다.
+
+`BigInt`를 사용한다.
+
+---
+
+## 11. Local Only
+
+다음이 없어야 한다.
+
+```text
+fetch()
+XMLHttpRequest
+WebSocket
+external script
+external CSS
+analytics
+```
+
+---
+
+## 12. 저장
+
+선택적으로 사용자의 마지막 설정값을 `localStorage`에 저장할 수 있다.
+
+저장 가능:
+
+```text
+selected bit width
+selected tool
+dark/light theme
+```
+
+입력 데이터 자체는 기본적으로 저장하지 않는다.
+
+---
+
+## 13. 키보드
+
+```text
+Enter = Calculate
+Ctrl + L 같은 브라우저 단축키 침범 금지
+```
+
+---
+
+## 14. Dark Mode
+
+선택적으로 Dark/Light 전환 제공.
+
+기본값은 Dark.
+
+---
+
+## 15. 추가하면 좋은 기능
+
+필수 구현 후 여유가 있으면 추가한다.
+
+```text
+ADD/SUB/MUL modulo 2^N
+Byte Swap (BSWAP)
+Nibble Swap
+Bit Reverse
+Popcount
+Parity
+Bit position viewer
+Byte padding
+HEX dump viewer
+```
+
+---
+
+## 16. HEX Dump Viewer
+
+추가 기능으로 문자열 또는 HEX 입력을 아래 형식으로 표시하면 좋다.
+
+```text
+00000000  48 65 6c 6c 6f 20 57 6f  Hello Wo
+00000008  72 6c 64                 rld
+```
+
+---
+
+## 17. Bit Viewer
+
+예:
+
+```text
+0xA5
+```
+
+입력 시:
+
+```text
+Bit:   7 6 5 4 3 2 1 0
+Value: 1 0 1 0 0 1 0 1
+```
+
+형식으로 표시한다.
+
+어셈블리 bit mask 분석에 유용하다.
+
+---
+
+## 18. 완료 조건
+
+아래 입력을 정상 처리하면 1차 완료로 판단한다.
+
+```text
+0xDEADBEEF
+0xFFFFFFFFFFFFFFFF
+0b10101010
+\x41\x42\x43\x44
+41 42 43 44
+Hello World
+```
+
+그리고 다음 연산들이 정상이어야 한다.
+
+```text
+AND
+OR
+XOR
+NOT
+SHL
+SHR
+SAR
+ROL
+ROR
+Endian Swap
+Signed / Unsigned
+ASCII / HEX
+```
