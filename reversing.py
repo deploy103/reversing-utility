@@ -42,7 +42,7 @@ def parse_auto(raw):
         if len(cleaned) >= 2 and len(cleaned) % 2 == 0 and re.fullmatch(r"[0-9a-fA-F]+", cleaned):
             return bytes.fromhex(cleaned), None
 
-    if re.search(r"[+*]", s) or re.search(r"[0-9a-fA-FxX]\s*-\s*[0-9]", s):
+    if re.search(r"[+*^&|]", s) or re.search(r"[0-9a-fA-FxX]\s*-\s*[0-9]", s):
         try:
             def _tok(m):
                 t = m.group(0)
@@ -54,7 +54,7 @@ def parse_auto(raw):
                     return str(int(t, 8))
                 return t
             expr = re.sub(r"0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+", _tok, compact)
-            if re.fullmatch(r"[0-9+\-*/()]+", expr):
+            if re.fullmatch(r"[0-9+\-*/()^&|<>]+", expr):
                 n = eval(expr, {"__builtins__": {}}, {})
                 return _int_to_bytes(int(n)), None
         except Exception:
@@ -137,7 +137,31 @@ def dump(buf):
     return "\n".join(lines)
 
 
+def _hex_bytes(s):
+    cleaned = re.sub(r"0x", "", s, flags=re.I)
+    cleaned = re.sub(r"[\s:,_-]", "", cleaned)
+    return bytes.fromhex(cleaned)
+
+
+def crib(ct, pt):
+    """암호문 XOR 평문가정 = 키. pip 필요 없음."""
+    cb = _hex_bytes(ct)
+    pb = _hex_bytes(pt)
+    n = min(len(cb), len(pb))
+    key = bytes(cb[i] ^ pb[i] for i in range(n))
+    for i in range(n):
+        print("0x%02X ^ 0x%02X = 0x%02X" % (cb[i], pb[i], key[i]))
+    print("키  " + " ".join("%02X" % b for b in key))
+    return 0
+
+
 def main(argv):
+    if argv and argv[0] in ("crib", "xor-crib"):
+        if len(argv) < 3:
+            print('사용: python3 reversing.py crib "B5 21 D0 FE" "F3 0F 1E FA"', file=sys.stderr)
+            return 2
+        return crib(argv[1], argv[2])
+
     parser = argparse.ArgumentParser(
         description="Offline reversing converter (HEX/DEC/BIN/OCT/ASCII)."
     )

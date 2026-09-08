@@ -163,11 +163,25 @@ RU.looksLikeSeparatedHex = function (raw) {
 RU.looksLikeExpression = function (raw) {
   var t = String(raw).trim();
   if (!t) return false;
+  if (/print\s*\(\s*hex\s*\(/i.test(t)) return true;
+  if (/[\^\&\|~]/.test(t) || /<<|>>/.test(t)) return true;
   if (/[+]/.test(t) || /[*\/()]/.test(t)) return true;
   if (!/-/.test(t)) return false;
   if (RU.looksLikeSeparatedHex(t)) return false;
   /* 0x401C0B-7 또는 100 - 3 처럼 숫자 두 개와 빼기 */
   return /[0-9a-fA-FhHbBoOxX][ \t]*-[ \t]*[+]?[0-9a-fA-FhHbBoOxX]/.test(t);
+};
+
+/** print(hex(0xB5 ^ 0xF3)) 같은 파이썬 한 줄을 식만 남긴다. */
+RU.unwrapPythonExpr = function (line) {
+  var s = String(line).trim();
+  var m = s.match(/^print\s*\(\s*hex\s*\((.*)\)\s*\)\s*;?\s*$/i);
+  if (m) return m[1].trim();
+  m = s.match(/^hex\s*\((.*)\)\s*$/i);
+  if (m) return m[1].trim();
+  m = s.match(/^print\s*\((.*)\)\s*;?\s*$/i);
+  if (m) return m[1].trim();
+  return s;
 };
 
 /**
@@ -214,8 +228,13 @@ RU.parseExpression = function (raw) {
       if (!f.ok) return f;
       return { ok: true, value: -f.value };
     }
+    if (eat("~")) {
+      var n = parseFactor();
+      if (!n.ok) return n;
+      return { ok: true, value: ~n.value };
+    }
     if (eat("(")) {
-      var inner = parseAdd();
+      var inner = parseOr();
       if (!inner.ok) return inner;
       if (!eat(")")) return _fail("Missing )");
       return inner;
@@ -260,7 +279,73 @@ RU.parseExpression = function (raw) {
     return left;
   }
 
-  var result = parseAdd();
+  function parseShift() {
+    var left = parseAdd();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      if (s.slice(i, i + 2) === "<<") {
+        i += 2;
+        var r1 = parseAdd();
+        if (!r1.ok) return r1;
+        if (r1.value < 0n || r1.value > 4096n) return _fail("Shift count too large");
+        left = { ok: true, value: left.value << r1.value };
+      } else if (s.slice(i, i + 2) === ">>") {
+        i += 2;
+        var r2 = parseAdd();
+        if (!r2.ok) return r2;
+        if (r2.value < 0n || r2.value > 4096n) return _fail("Shift count too large");
+        left = { ok: true, value: left.value >> r2.value };
+      } else break;
+    }
+    return left;
+  }
+
+  function parseBitAnd() {
+    var left = parseShift();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      if (s.charAt(i) === "&" && s.charAt(i + 1) !== "&") {
+        i++;
+        var r = parseShift();
+        if (!r.ok) return r;
+        left = { ok: true, value: left.value & r.value };
+      } else break;
+    }
+    return left;
+  }
+
+  function parseBitXor() {
+    var left = parseBitAnd();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      if (eat("^")) {
+        var r = parseBitAnd();
+        if (!r.ok) return r;
+        left = { ok: true, value: left.value ^ r.value };
+      } else break;
+    }
+    return left;
+  }
+
+  function parseOr() {
+    var left = parseBitXor();
+    if (!left.ok) return left;
+    for (;;) {
+      peek();
+      if (s.charAt(i) === "|" && s.charAt(i + 1) !== "|") {
+        i++;
+        var r = parseBitXor();
+        if (!r.ok) return r;
+        left = { ok: true, value: left.value | r.value };
+      } else break;
+    }
+    return left;
+  }
+
+  var result = parseOr();
   if (!result.ok) return result;
   peek();
   if (i < s.length) return _fail("Invalid expression");
@@ -271,6 +356,62 @@ RU.parseExpression = function (raw) {
     base: 16,
     source: "expr",
     expr: s.replace(/\s+/g, " ")
+  };
+};
+
+/**
+ * 여러 줄 식. 파이썬 print(hex(0xB5 ^ 0xF3)) 를 여러 줄 붙여넣어도 된다.
+ */
+RU.parseExprBlock = function (raw) {
+  var lines = String(raw).split(/\r?\n/);
+  var rows = [];
+  var errors = [];
+  for (var li = 0; li < lines.length; li++) {
+    var line = lines[li].trim();
+    if (!line) continue;
+    var inner = RU.unwrapPythonExpr(line);
+    var parsed = RU.parseExpression(inner);
+    if (!parsed.ok) {
+      var asInt = RU.parseInteger(inner);
+      if (asInt.ok) {
+        parsed = {
+          ok: true,
+          value: asInt.value,
+          expr: inner,
+          source: "expr"
+        };
+      } else {
+        errors.push((li + 1) + ": " + (parsed.error || "Invalid expression"));
+        continue;
+      }
+    }
+    var v = parsed.value;
+    rows.push({
+      expr: parsed.expr || inner,
+      value: v,
+      hex: v < 0n ? "-" + RU.formatHexFree(-v) : RU.formatHexFree(v),
+      dec: v.toString(10)
+    });
+  }
+  if (rows.length === 0) {
+    return _fail(errors.length ? errors[0] : "Empty input");
+  }
+  if (rows.length === 1 && errors.length === 0) {
+    return {
+      ok: true,
+      kind: "int",
+      value: rows[0].value,
+      base: 16,
+      source: "expr",
+      expr: rows[0].expr
+    };
+  }
+  return {
+    ok: true,
+    kind: "exprlist",
+    source: "expr",
+    rows: rows,
+    error: errors.length ? errors.join("; ") : null
   };
 };
 
@@ -331,7 +472,7 @@ RU.analyzeInput = function (raw, force) {
 
   /* 주소 계산: 0x401C04+7 → 0x401C0B. HEX 덤프 41-42-43-44 보다 먼저 보면 안 되므로 looksLike 로 걸러짐. */
   if (force === "auto" && RU.looksLikeExpression(t)) {
-    var ex = RU.parseExpression(t);
+    var ex = RU.parseExprBlock(t);
     if (ex.ok) return ex;
   }
 

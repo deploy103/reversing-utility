@@ -199,6 +199,26 @@ eq(aAdd.source, "expr", "auto detects expression");
 eq(aAdd.value, 0x401c0bn, "auto value");
 ok(!RU.looksLikeExpression("41-42-43-44"), "hex dump with dashes is not expression");
 
+console.log("\n== XOR crib / python hex() ==");
+eq(RU.parseExpression("0xB5 ^ 0xF3").value, 0x46n, "0xB5 ^ 0xF3 = 0x46");
+eq(RU.parseExpression("0x21 ^ 0x0F").value, 0x2en, "0x21 ^ 0x0F = 0x2E");
+eq(RU.parseExpression("0xD0 ^ 0x1E").value, 0xcen, "0xD0 ^ 0x1E = 0xCE");
+eq(RU.parseExpression("0xFE ^ 0xFA").value, 0x04n, "0xFE ^ 0xFA = 0x04");
+eq(RU.unwrapPythonExpr("print(hex(0xB5 ^ 0xF3))"), "0xB5 ^ 0xF3", "unwrap print(hex())");
+var crib = RU.xorCrib([0xb5, 0x21, 0xd0, 0xfe], [0xf3, 0x0f, 0x1e, 0xfa]);
+eq(RU.bytesToHex(crib.key), "46 2E CE 04", "crib key B5.. XOR F3..");
+var block = [
+  "print(hex(0xB5 ^ 0xF3))",
+  "print(hex(0x21 ^ 0x0F))",
+  "print(hex(0xD0 ^ 0x1E))",
+  "print(hex(0xFE ^ 0xFA))"
+].join("\n");
+var many = RU.analyzeInput(block, "auto");
+eq(many.kind, "exprlist", "4 print(hex) lines");
+eq(many.rows.length, 4, "4 results");
+eq(many.rows[0].hex, "0x46", "line1 0x46");
+eq(many.rows[3].hex, "0x04", "line4 0x04");
+
 console.log("\n== Long strings / unlimited bases ==");
 var bare = RU.analyzeInput("41424344", "auto");
 eq(bare.kind, "bytes", "41424344 auto is hex bytes not decimal");

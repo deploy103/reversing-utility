@@ -42,6 +42,11 @@
     </div>
     <div class="examples">
       <span>Examples</span>
+      <button type="button" class="example-btn" data-example="0xB5 ^ 0xF3">0xB5 ^ 0xF3</button>
+      <button type="button" class="example-btn" data-example="print(hex(0xB5 ^ 0xF3))
+print(hex(0x21 ^ 0x0F))
+print(hex(0xD0 ^ 0x1E))
+print(hex(0xFE ^ 0xFA))">print(hex XOR 4줄)</button>
       <button type="button" class="example-btn" data-example="0x401C04+7">0x401C04+7</button>
       <button type="button" class="example-btn" data-example="0x401C0B-0x401C04">0x401C0B-0x401C04</button>
       <button type="button" class="example-btn" data-example="0xDEADBEEF">0xDEADBEEF</button>
@@ -81,6 +86,8 @@
         <p class="hint">
           상단 Universal Input 에 짧은 상수든 긴 덤프든 붙여넣으면 HEX / DEC / BIN / OCT / ASCII 를 한 번에 보여준다.
           주소 더하기도 된다. 예: <code>0x401C04+7</code> → <code>0x401C0B</code>.
+          XOR 도 된다. 예: <code>0xB5 ^ 0xF3</code> → <code>0x46</code>.
+          <code>print(hex(0xB5 ^ 0xF3))</code> 여러 줄 붙여넣기도 된다.
           헤더의 8 / 16 / 32 / 64 는 레지스터 하위 비트 해석용. Ctrl+Enter 또는 Calculate.
         </p>
       </section>
@@ -179,6 +186,35 @@
 
       <section class="panel" id="panel-xor">
         <h2>XOR Tool <small>배타적 논리합</small></h2>
+
+        <h3>암호문 XOR 평문가정 = 키</h3>
+        <p class="hint">
+          암호문과 “이 평문일 것이다”를 XOR 하면 키가 나온다. 파이썬으로
+          <code>print(hex(0xB5 ^ 0xF3))</code> 를 여러 줄 짜지 말고 여기다 붙여넣으면 된다.
+        </p>
+        <div class="form-row">
+          <div class="field">
+            <label for="xc-ct">암호문 (HEX)</label>
+            <textarea id="xc-ct" spellcheck="false" placeholder="B5 21 D0 FE">B5 21 D0 FE</textarea>
+            <div class="error" id="xc-ct-err"></div>
+          </div>
+          <div class="field">
+            <label for="xc-pt">평문가정 (HEX 또는 ASCII)</label>
+            <textarea id="xc-pt" spellcheck="false" placeholder="F3 0F 1E FA">F3 0F 1E FA</textarea>
+            <div class="error" id="xc-pt-err"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field narrow">
+            <label for="xc-pt-fmt">평문 형식</label>
+            <select id="xc-pt-fmt">
+              <option value="hex" selected>HEX</option>
+              <option value="ascii">ASCII</option>
+            </select>
+          </div>
+        </div>
+        <pre class="dump" id="xc-proof"></pre>
+        <div id="xc-out"></div>
 
         <h3>Numeric XOR</h3>
         <p class="hint">정수 XOR. Bitwise 탭의 XOR 과 같다.</p>
@@ -571,8 +607,9 @@
 
         <article class="usage-card">
           <h4>XOR — 배타적 논리합</h4>
-          <p>숫자 XOR, 문자열 XOR, 키가 반복되는 XOR, 1바이트 키 전부 대입(브루트포스).</p>
-          <p class="usage-when">언제: 문자열이 이상하게 깨져 보이고, 키가 한 바이트거나 “KEY” 처럼 반복될 때. printable 점수 높은 후보가 위로 온다.</p>
+          <p><strong>암호문 XOR 평문가정 = 키.</strong> 예: 암호문 <code>B5 21 D0 FE</code>, 평문 <code>F3 0F 1E FA</code> → 키 <code>46 2E CE 04</code>.</p>
+          <p>상단에 <code>0xB5 ^ 0xF3</code> 또는 파이썬 <code>print(hex(0xB5 ^ 0xF3))</code> 여러 줄을 그대로 붙여넣어도 된다. 파이썬을 직접 짤 필요 없다.</p>
+          <p class="usage-when">언제: 바이너리에서 본 HEX가 알려진 문자열(F3 0F 1E FA = endbr64 앞부분 등)과 XOR 된 키를 찾을 때</p>
           <button type="button" class="jump-tool" data-jump="xor">열기</button>
         </article>
 

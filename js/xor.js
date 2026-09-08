@@ -71,6 +71,40 @@ RU.xorBruteforce = function (data) {
  * 데이터/키 포맷 변환 후 XOR.
  * format: "ascii" | "hex"
  */
+/**
+ * 암호문 XOR 평문가정 = 키 (known-plaintext / crib).
+ * B5 21 D0 FE  XOR  F3 0F 1E FA  →  46 2E CE 04
+ * 길이가 다르면 짧은 쪽만큼만 하고 leftover 경고.
+ */
+RU.xorCrib = function (cipher, plain) {
+  if (!cipher || cipher.length === 0) return { ok: false, error: "Empty ciphertext" };
+  if (!plain || plain.length === 0) return { ok: false, error: "Empty plaintext" };
+  var n = Math.min(cipher.length, plain.length);
+  var key = [];
+  var proof = [];
+  function hx(b) {
+    return "0x" + (b & 0xff).toString(16).toUpperCase().padStart(2, "0");
+  }
+  for (var i = 0; i < n; i++) {
+    var k = (cipher[i] ^ plain[i]) & 0xff;
+    key.push(k);
+    proof.push({
+      c: cipher[i],
+      p: plain[i],
+      k: k,
+      line: hx(cipher[i]) + " ^ " + hx(plain[i]) + " = " + hx(k)
+    });
+  }
+  return {
+    ok: true,
+    key: key,
+    proof: proof,
+    leftover: cipher.length !== plain.length
+      ? "길이가 달라서 앞 " + n + "바이트만 XOR 했다"
+      : null
+  };
+};
+
 RU.parseXorOperand = function (raw, format) {
   if (format === "hex") return RU.parseHexBytes(raw);
   if (raw == null || String(raw).length === 0) {

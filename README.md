@@ -65,9 +65,12 @@ sudo apt install python3
 
 ```text
 python3 reversing.py 0x41424344
-python3 reversing.py 0100000101000010
+python3 reversing.py 0xB5^0xF3
+python3 reversing.py crib "B5 21 D0 FE" "F3 0F 1E FA"
 python3 reversing.py -f dump.txt
 ```
+
+`crib` 은 암호문 XOR 평문가정 = 키. **pip 패키지는 필요 없다.** Python 3 만 있으면 된다.
 
 인자 없이 실행하면 표준입력에서 읽는다. 긴 덤프를 붙여넣은 뒤:
 

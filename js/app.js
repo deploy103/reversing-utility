@@ -232,6 +232,25 @@
       return;
     }
 
+    if (analysis.kind === "exprlist") {
+      setText(det, "Detected: 식 " + analysis.rows.length + "줄 (XOR/연산)");
+      if (analysis.error) setText(err, analysis.error);
+      var keyBytes = [];
+      var allBytes = true;
+      for (var ri = 0; ri < analysis.rows.length; ri++) {
+        var row = analysis.rows[ri];
+        addRow(box, row.expr, row.hex + "   (" + row.dec + ")");
+        if (row.value < 0n || row.value > 255n) allBytes = false;
+        else keyBytes.push(Number(row.value));
+      }
+      if (allBytes && keyBytes.length) {
+        addRow(box, "키 HEX", RU.bytesToHex(keyBytes));
+        addRow(box, "키 ASCII", RU.bytesToAscii(keyBytes, true));
+        addRow(box, "C Escape", RU.cEscape(keyBytes));
+      }
+      return;
+    }
+
     var norm = RU.normalizeAnalysis(analysis, state.bitWidth);
     var q = RU.quickConvert(norm);
 
@@ -546,10 +565,49 @@
   }
 
   function runXor() {
+    runXorCrib();
     runNumericXor();
     runStringXor();
     runRepeatingXor();
     runXorBrute();
+  }
+
+  function runXorCrib() {
+    var proof = $("xc-proof");
+    var out = $("xc-out");
+    if (!proof) return;
+    clearEl(out);
+    setText(proof, "");
+    setText($("xc-ct-err"), "");
+    setText($("xc-pt-err"), "");
+    var ctRaw = $("xc-ct").value;
+    var ptRaw = $("xc-pt").value;
+    if (!String(ctRaw).trim() && !String(ptRaw).trim()) return;
+    var ct = RU.parseHexBytes(ctRaw);
+    if (!ct.ok) {
+      setText($("xc-ct-err"), ct.error);
+      return;
+    }
+    var pt = RU.parseXorOperand(ptRaw, $("xc-pt-fmt").value);
+    if (!pt.ok) {
+      setText($("xc-pt-err"), pt.error);
+      return;
+    }
+    var r = RU.xorCrib(ct.bytes, pt.bytes);
+    if (!r.ok) {
+      setText($("xc-pt-err"), r.error);
+      return;
+    }
+    var lines = [];
+    for (var i = 0; i < r.proof.length; i++) lines.push(r.proof[i].line);
+    lines.push("");
+    lines.push("키  " + RU.bytesToHex(r.key));
+    if (r.leftover) lines.push(r.leftover);
+    setText(proof, lines.join("\n"));
+    addRow(out, "키 HEX", RU.bytesToHex(r.key));
+    addRow(out, "키 ASCII", RU.bytesToAscii(r.key, true));
+    addRow(out, "C Escape", RU.cEscape(r.key));
+    addRow(out, "Python", RU.pythonBytes(r.key));
   }
 
   /* ---------- String / Bytes ---------- */
@@ -1033,6 +1091,7 @@
       "ad-expr", "ad-a", "ad-b",
       "bw-a", "bw-b",
       "sh-val", "sh-count",
+      "xc-ct", "xc-pt", "xc-pt-fmt",
       "xn-a", "xn-b",
       "xs-data", "xs-key", "xs-data-fmt", "xs-key-fmt",
       "xr-data", "xr-key", "xr-data-fmt", "xr-key-fmt",
@@ -1089,6 +1148,10 @@
     $("u-input").value = "0x401C04+7";
     runUniversal();
     expect($("u-results").textContent.indexOf("0x401C0B") >= 0, "0x401C04+7 = 0x401C0B");
+
+    $("u-input").value = "0xB5 ^ 0xF3";
+    runUniversal();
+    expect($("u-results").textContent.indexOf("0x46") >= 0, "0xB5 ^ 0xF3 = 0x46");
 
     $("u-input").value = "41".repeat(40);
     runUniversal();
