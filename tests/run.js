@@ -219,6 +219,17 @@ eq(many.rows.length, 4, "4 results");
 eq(many.rows[0].hex, "0x46", "line1 0x46");
 eq(many.rows[3].hex, "0x04", "line4 0x04");
 
+var hx = RU.analyzeInput("01 39 ^ 10 32", "auto");
+eq(hx.kind, "bytes", "HxD style xor is bytes");
+eq(RU.bytesToHex(hx.bytes), "11 0B", "01 39 ^ 10 32 = 11 0B");
+var z = RU.analyzeInput("00 00 00 00", "auto");
+eq(z.kind, "bytes", "00 00 00 00 is bytes");
+eq(RU.bytesToHex(z.bytes), "00 00 00 00", "four zero bytes");
+var cribLine = RU.analyzeInput("B5 21 D0 FE ^ F3 0F 1E FA", "auto");
+eq(RU.bytesToHex(cribLine.bytes), "46 2E CE 04", "one-line crib xor");
+var dump = RU.parseLooseHexBytes("00000000  01 39 10 32  ........");
+eq(RU.bytesToHex(dump.bytes), "01 39 10 32", "HxD dump offset stripped");
+
 console.log("\n== Long strings / unlimited bases ==");
 var bare = RU.analyzeInput("41424344", "auto");
 eq(bare.kind, "bytes", "41424344 auto is hex bytes not decimal");

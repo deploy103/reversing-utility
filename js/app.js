@@ -583,7 +583,7 @@
     var ctRaw = $("xc-ct").value;
     var ptRaw = $("xc-pt").value;
     if (!String(ctRaw).trim() && !String(ptRaw).trim()) return;
-    var ct = RU.parseHexBytes(ctRaw);
+    var ct = RU.parseLooseHexBytes(ctRaw);
     if (!ct.ok) {
       setText($("xc-ct-err"), ct.error);
       return;

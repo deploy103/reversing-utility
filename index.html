@@ -42,6 +42,8 @@
     </div>
     <div class="examples">
       <span>Examples</span>
+      <button type="button" class="example-btn" data-example="01 39 ^ 10 32">01 39 ^ 10 32</button>
+      <button type="button" class="example-btn" data-example="00 00 00 00">00 00 00 00</button>
       <button type="button" class="example-btn" data-example="0xB5 ^ 0xF3">0xB5 ^ 0xF3</button>
       <button type="button" class="example-btn" data-example="print(hex(0xB5 ^ 0xF3))
 print(hex(0x21 ^ 0x0F))
@@ -86,7 +88,8 @@ print(hex(0xFE ^ 0xFA))">print(hex XOR 4줄)</button>
         <p class="hint">
           상단 Universal Input 에 짧은 상수든 긴 덤프든 붙여넣으면 HEX / DEC / BIN / OCT / ASCII 를 한 번에 보여준다.
           주소 더하기도 된다. 예: <code>0x401C04+7</code> → <code>0x401C0B</code>.
-          XOR 도 된다. 예: <code>0xB5 ^ 0xF3</code> → <code>0x46</code>.
+          HxD 복붙도 된다. 예: <code>01 39 ^ 10 32</code> → <code>11 0B</code>, <code>00 00 00 00</code> 도 HEX 바이트.
+          XOR 예: <code>0xB5 ^ 0xF3</code> → <code>0x46</code>.
           <code>print(hex(0xB5 ^ 0xF3))</code> 여러 줄 붙여넣기도 된다.
           헤더의 8 / 16 / 32 / 64 는 레지스터 하위 비트 해석용. Ctrl+Enter 또는 Calculate.
         </p>
@@ -608,7 +611,8 @@ print(hex(0xFE ^ 0xFA))">print(hex XOR 4줄)</button>
         <article class="usage-card">
           <h4>XOR — 배타적 논리합</h4>
           <p><strong>암호문 XOR 평문가정 = 키.</strong> 예: 암호문 <code>B5 21 D0 FE</code>, 평문 <code>F3 0F 1E FA</code> → 키 <code>46 2E CE 04</code>.</p>
-          <p>상단에 <code>0xB5 ^ 0xF3</code> 또는 파이썬 <code>print(hex(0xB5 ^ 0xF3))</code> 여러 줄을 그대로 붙여넣어도 된다. 파이썬을 직접 짤 필요 없다.</p>
+          <p>HxD에서 복사한 공백 HEX도 된다. <code>01 39 ^ 10 32</code> → <code>11 0B</code>, <code>00 00 00 00</code> 도 그대로 바이트.</p>
+          <p>상단에 <code>0xB5 ^ 0xF3</code> 또는 파이썬 <code>print(hex(0xB5 ^ 0xF3))</code> 여러 줄을 그대로 붙여넣어도 된다.</p>
           <p class="usage-when">언제: 바이너리에서 본 HEX가 알려진 문자열(F3 0F 1E FA = endbr64 앞부분 등)과 XOR 된 키를 찾을 때</p>
           <button type="button" class="jump-tool" data-jump="xor">열기</button>
         </article>

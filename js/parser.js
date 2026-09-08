@@ -123,6 +123,91 @@ RU.parseHexBytes = function (raw) {
   return { ok: true, bytes: bytes };
 };
 
+/** HxD / hexdump 한 줄: 앞 오프셋 + HEX + ASCII */
+RU.looksLikeHexDump = function (raw) {
+  return /^[0-9A-Fa-f]{8,16}:?[ \t]{2,}/m.test(String(raw).trim());
+};
+
+RU.parseHexDump = function (raw) {
+  var lines = String(raw).split(/\r?\n/);
+  var bytes = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/^\s+/, "");
+    if (!line) continue;
+    var rest = line.replace(/^[0-9A-Fa-f]{4,16}:?[ \t]{1,3}/, "");
+    var hexPart = rest.split(/\s{2,}/)[0];
+    var pairs = hexPart.match(/\b[0-9A-Fa-f]{2}\b/g);
+    if (!pairs) continue;
+    for (var j = 0; j < pairs.length; j++) bytes.push(parseInt(pairs[j], 16));
+  }
+  if (!bytes.length) return _fail("Invalid HEX");
+  return { ok: true, bytes: bytes };
+};
+
+/** HxD 복사본, 00 00 00 00, \x00, 0x00 0x00 모두 */
+RU.parseLooseHexBytes = function (raw) {
+  var s = String(raw == null ? "" : raw).trim();
+  if (s === "") return _fail("Empty input");
+  if (RU.looksLikeHexDump(s)) {
+    var d = RU.parseHexDump(s);
+    if (d.ok) return d;
+  }
+  return RU.parseHexBytes(s);
+};
+
+/**
+ * HxD 스타일: `01 39 ^ 10 32` → 11 0B
+ * 짧은 쪽은 반복. 왼쪽이 데이터, 오른쪽이 키.
+ */
+RU.evalBytewiseExpr = function (raw) {
+  var s = String(raw).trim();
+  if (!/[\^\&\|]/.test(s)) return _fail("Not a byte expression");
+  var tokens = s.split(/(\^|&|\|)/);
+  var parts = [];
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i].trim();
+    if (t) parts.push(t);
+  }
+  if (parts.length < 3 || parts.length % 2 === 0) return _fail("Invalid expression");
+
+  function parseSide(x) {
+    var hb = RU.parseLooseHexBytes(x);
+    if (hb.ok && hb.bytes.length) return hb;
+    var n = RU.parseInteger(x);
+    if (!n.ok || n.value < 0n) return hb.ok ? hb : n;
+    return { ok: true, bytes: RU.intToBytesBE(n.value, null) };
+  }
+
+  var left = parseSide(parts[0]);
+  if (!left.ok) return left;
+  var bytes = left.bytes.slice();
+  for (var p = 1; p < parts.length; p += 2) {
+    var op = parts[p];
+    if (op !== "^" && op !== "&" && op !== "|") return _fail("Invalid expression");
+    var right = parseSide(parts[p + 1]);
+    if (!right.ok) return right;
+    var key = right.bytes;
+    if (!key.length) return _fail("Empty input");
+    var n = Math.max(bytes.length, key.length);
+    var out = [];
+    for (var j = 0; j < n; j++) {
+      var a = bytes[j % bytes.length];
+      var b = key[j % key.length];
+      if (op === "^") out.push((a ^ b) & 0xff);
+      else if (op === "&") out.push((a & b) & 0xff);
+      else out.push((a | b) & 0xff);
+    }
+    bytes = out;
+  }
+  return {
+    ok: true,
+    kind: "bytes",
+    bytes: bytes,
+    source: "xor-bytes",
+    expr: s.replace(/\s+/g, " ")
+  };
+};
+
 /**
  * 0/1 과 공백/_ 만 허용.
  * pad=true 이면 왼쪽 0 으로 8비트 배수에 맞춘다 (긴 비트열 자동 변환용).
@@ -442,7 +527,7 @@ RU.analyzeInput = function (raw, force) {
     return { ok: true, kind: "ascii", bytes: RU.asciiToBytes(s.replace(/\r\n/g, "\n")), source: "ascii" };
   }
   if (force === "bytes") {
-    var hb = RU.parseHexBytes(t);
+    var hb = RU.parseLooseHexBytes(t);
     if (!hb.ok) return hb;
     return { ok: true, kind: "bytes", bytes: hb.bytes, source: "hex-bytes" };
   }
@@ -469,6 +554,12 @@ RU.analyzeInput = function (raw, force) {
   }
 
   /* ---- auto: 긴 덤프도 선형 스캔으로 판별 ---- */
+
+  /* HxD: 01 39 ^ 10 32 → 바이트 XOR. print(hex(...)) 는 정수 식으로 넘긴다. */
+  if (force === "auto" && /[\^\&\|]/.test(t) && !/print\s*\(/i.test(t)) {
+    var bw = RU.evalBytewiseExpr(t);
+    if (bw.ok) return bw;
+  }
 
   /* 주소 계산: 0x401C04+7 → 0x401C0B. HEX 덤프 41-42-43-44 보다 먼저 보면 안 되므로 looksLike 로 걸러짐. */
   if (force === "auto" && RU.looksLikeExpression(t)) {

@@ -106,7 +106,7 @@ RU.xorCrib = function (cipher, plain) {
 };
 
 RU.parseXorOperand = function (raw, format) {
-  if (format === "hex") return RU.parseHexBytes(raw);
+  if (format === "hex") return RU.parseLooseHexBytes(raw);
   if (raw == null || String(raw).length === 0) {
     return { ok: false, error: "Empty input" };
   }
