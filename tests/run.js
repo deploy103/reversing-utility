@@ -191,6 +191,8 @@ eq(add.value, 0x401c0bn, "0x401C04 + 7 = 0x401C0B");
 eq(RU.formatHexFree(add.value), "0x401C0B", "hex 0x401C0B");
 eq(RU.parseExpression("0x401C04+7").value, 0x401c0bn, "no spaces");
 eq(RU.parseExpression("0x401C0B - 0x401C04").value, 7n, "subtract addresses");
+eq(RU.parseExpression("0x401C0B-0x401C04").value, 7n, "subtract no spaces");
+eq(RU.parseExpression("(0x401054-0x401000)/4").value, 0x15n, "(addr-base)/size index");
 eq(RU.parseExpression("0x401000 + 4*8").value, 0x401000n + 32n, "base + index*scale");
 var aAdd = RU.analyzeInput("0x401C04+7", "auto");
 eq(aAdd.source, "expr", "auto detects expression");

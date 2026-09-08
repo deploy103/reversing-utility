@@ -43,6 +43,7 @@
     <div class="examples">
       <span>Examples</span>
       <button type="button" class="example-btn" data-example="0x401C04+7">0x401C04+7</button>
+      <button type="button" class="example-btn" data-example="0x401C0B-0x401C04">0x401C0B-0x401C04</button>
       <button type="button" class="example-btn" data-example="0xDEADBEEF">0xDEADBEEF</button>
       <button type="button" class="example-btn" data-example="0xFFFFFFFF">0xFFFFFFFF</button>
       <button type="button" class="example-btn" data-example="0xFFFFFFFFFFFFFFFF">0xFFFFFFFFFFFFFFFF</button>
@@ -60,7 +61,7 @@
   <div class="layout">
     <nav class="sidebar" id="sidebar">
       <button type="button" class="nav-btn active" data-tool="convert">Quick Convert<span class="nav-ko">빠른 변환</span></button>
-      <button type="button" class="nav-btn" data-tool="address">Address<span class="nav-ko">주소 더하기</span></button>
+      <button type="button" class="nav-btn" data-tool="address">Address<span class="nav-ko">주소 + / −</span></button>
       <button type="button" class="nav-btn" data-tool="bitwise">Bitwise<span class="nav-ko">비트 연산</span></button>
       <button type="button" class="nav-btn" data-tool="shift">Shift / Rotate<span class="nav-ko">밀기 / 회전</span></button>
       <button type="button" class="nav-btn" data-tool="xor">XOR<span class="nav-ko">배타적 논리합</span></button>
@@ -87,39 +88,38 @@
       <section class="panel" id="panel-address">
         <h2>Address <small>주소 더하기 / 빼기</small></h2>
         <p class="hint">
-          베이스 주소에 오프셋을 더하거나 뺀다. 비트 폭으로 자르지 않는다.
-          예: 0x401C04 + 7 = 0x401C0B
+          주소 계산은 더하기·빼기가 거의 전부다. A와 B를 넣으면 <strong>A+B</strong> 와 <strong>A−B</strong> 를 동시에 보여 준다.
+          곱하기·나누기 버튼은 안 둔다. ×2/4/8 은 Shift(SHL)와 같고, 배열이면 아래 식에
+          <code>0x401000 + 3*0x18</code> / <code>(0x401054-0x401000)/4</code> 처럼 넣으면 된다.
         </p>
         <div class="form-row">
           <div class="field">
             <label for="ad-expr">식 (붙여넣기)</label>
-            <input type="text" id="ad-expr" spellcheck="false" autocomplete="off" placeholder="0x401C04 + 7">
+            <input type="text" id="ad-expr" spellcheck="false" autocomplete="off" placeholder="0x401C04 + 7  또는  0x401C0B - 0x401C04">
             <div class="error" id="ad-expr-err"></div>
           </div>
         </div>
-        <p class="hint">또는 칸을 나눠서:</p>
+        <div class="examples">
+          <button type="button" class="example-btn" id="ad-ex-add" data-ad-expr="0x401C04 + 7">0x401C04 + 7</button>
+          <button type="button" class="example-btn" id="ad-ex-sub" data-ad-expr="0x401C0B - 0x401C04">0x401C0B - 0x401C04</button>
+          <button type="button" class="example-btn" id="ad-ex-idx" data-ad-expr="0x401000 + 3*0x18">0x401000 + 3*0x18</button>
+        </div>
+        <p class="hint">또는 칸을 나눠서 (더하기와 빼기를 둘 다 계산):</p>
         <div class="form-row">
           <div class="field">
-            <label for="ad-a">베이스 주소</label>
+            <label for="ad-a">A (베이스 / 주소)</label>
             <input type="text" id="ad-a" spellcheck="false" autocomplete="off" placeholder="0x401C04" value="0x401C04">
             <div class="error" id="ad-a-err"></div>
           </div>
-          <div class="field narrow">
-            <label for="ad-op">연산</label>
-            <select id="ad-op">
-              <option value="+" selected>+ 더하기</option>
-              <option value="-">− 빼기</option>
-              <option value="*">× 곱하기</option>
-            </select>
-          </div>
           <div class="field">
-            <label for="ad-b">오프셋</label>
+            <label for="ad-b">B (오프셋 / 다른 주소)</label>
             <input type="text" id="ad-b" spellcheck="false" autocomplete="off" placeholder="7" value="7">
             <div class="error" id="ad-b-err"></div>
           </div>
         </div>
         <div class="error" id="ad-err"></div>
         <pre class="dump" id="ad-proof"></pre>
+        <div class="op-grid" id="ad-ops"></div>
         <div id="ad-out"></div>
       </section>
 
@@ -544,9 +544,10 @@
         </article>
 
         <article class="usage-card">
-          <h4>Address — 주소 더하기</h4>
-          <p>베이스 주소 + 오프셋. 비트 폭으로 자르지 않는다. <code>0x401C04 + 7 = 0x401C0B</code> 를 10진과 함께 보여 줘서 증명할 수 있다.</p>
-          <p class="usage-when">언제: jmp/call 목적지, <code>base + i*4</code>, 구조체 필드 오프셋</p>
+          <h4>Address — 주소 더하기 / 빼기</h4>
+          <p>A, B 를 넣으면 <strong>A+B</strong> 와 <strong>A−B</strong> 를 동시에 보여 준다. 비트 폭으로 자르지 않는다.</p>
+          <p><code>0x401C04 + 7 = 0x401C0B</code> / <code>0x401C0B - 0x401C04 = 7</code></p>
+          <p class="usage-when">곱·나누기 버튼은 없다. ×2/4/8 은 Shift 탭(SHL)과 같고, 배열/구조체는 식에 <code>0x401000+3*0x18</code>, <code>(0x401054-0x401000)/4</code> 로 넣는다.</p>
           <button type="button" class="jump-tool" data-jump="address">열기</button>
         </article>
 

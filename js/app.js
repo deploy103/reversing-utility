@@ -303,6 +303,15 @@
     return RU.formatHexFree(v);
   }
 
+  function fillAddrResult(container, value) {
+    addRow(container, "HEX", hexAddr(value));
+    addRow(container, "DEC", value.toString(10));
+    addRow(container, "BIN", value >= 0n ? RU.formatBinFree(value) : "-" + RU.formatBinFree(-value));
+    if (value >= 0n && value <= 0xffffffffn) {
+      addRow(container, "HEX 32-bit", RU.formatHex(value, 32));
+    }
+  }
+
   /* ---------- Address ---------- */
 
   function runAddress() {
@@ -310,18 +319,18 @@
     var err = $("ad-err");
     var exprErr = $("ad-expr-err");
     var out = $("ad-out");
+    var ops = $("ad-ops");
     var proof = $("ad-proof");
     if (!exprEl) return;
     clearEl(out);
+    if (ops) clearEl(ops);
     setText(err, "");
     setText(exprErr, "");
     setText(proof, "");
+    setText($("ad-a-err"), "");
+    setText($("ad-b-err"), "");
 
     var expr = String(exprEl.value || "").trim();
-    var result;
-    var lineA;
-    var lineB;
-    var opLabel = "+";
 
     if (expr) {
       var ex = RU.parseExpression(expr);
@@ -329,45 +338,29 @@
         setText(exprErr, ex.error);
         return;
       }
-      result = ex.value;
-      lineA = expr.replace(/\s+/g, " ");
-      lineB = null;
-    } else {
-      var a = readFullInt($("ad-a"), $("ad-a-err"), true);
-      var b = readFullInt($("ad-b"), $("ad-b-err"), true);
-      if (!a.ok || !b.ok) return;
-      var op = $("ad-op").value;
-      opLabel = op;
-      if (op === "-") result = a.value - b.value;
-      else if (op === "*") result = a.value * b.value;
-      else result = a.value + b.value;
-      lineA = hexAddr(a.value) + "  =  " + a.value.toString(10);
-      lineB = op + " " + hexAddr(b.value) + "  =  " + b.value.toString(10);
+      setText(proof, expr.replace(/\s+/g, " ") + "\n=  " + hexAddr(ex.value) + "  (" + ex.value.toString(10) + ")");
+      fillAddrResult(out, ex.value);
+      return;
     }
 
-    var hex = hexAddr(result);
-    var dec = result.toString(10);
-    var pad32 = result >= 0n && result <= 0xffffffffn ? RU.formatHex(result, 32) : RU.NA;
-    var pad64 = result >= 0n && result <= 0xffffffffffffffffn ? RU.formatHex(result, 64) : RU.NA;
+    var a = readFullInt($("ad-a"), $("ad-a-err"), true);
+    var b = readFullInt($("ad-b"), $("ad-b-err"), true);
+    if (!a.ok || !b.ok) return;
 
-    if (lineB) {
-      setText(
-        proof,
-        lineA + "\n" +
-          lineB + "\n" +
-          "────────────────────────\n" +
-          hex + "  =  " + dec
-      );
-    } else {
-      setText(proof, lineA + "\n=  " + hex + "  (" + dec + ")");
-    }
+    var sum = a.value + b.value;
+    var diff = a.value - b.value;
 
-    addRow(out, "HEX", hex);
-    addRow(out, "DEC", dec);
-    addRow(out, "BIN", result >= 0n ? RU.formatBinFree(result) : "-" + RU.formatBinFree(-result));
-    addRow(out, "OCT", result >= 0n ? RU.formatOctFree(result) : "-" + RU.formatOctFree(-result));
-    addRow(out, "HEX 32-bit", pad32);
-    addRow(out, "HEX 64-bit", pad64);
+    setText(
+      proof,
+      "A  " + hexAddr(a.value) + "  =  " + a.value.toString(10) + "\n" +
+        "B  " + hexAddr(b.value) + "  =  " + b.value.toString(10) + "\n" +
+        "────────────────────────\n" +
+        "A + B  " + hexAddr(sum) + "  =  " + sum.toString(10) + "\n" +
+        "A − B  " + hexAddr(diff) + "  =  " + diff.toString(10)
+    );
+
+    fillAddrResult(opCard(ops, "A + B  더하기"), sum);
+    fillAddrResult(opCard(ops, "A − B  빼기 (오프셋)"), diff);
   }
 
   /* ---------- Bitwise ---------- */
@@ -990,7 +983,16 @@
 
     document.querySelectorAll(".example-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        $("u-input").value = btn.getAttribute("data-example");
+        var ad = btn.getAttribute("data-ad-expr");
+        if (ad) {
+          $("ad-expr").value = ad;
+          setTool("address");
+          runAddress();
+          return;
+        }
+        var ex = btn.getAttribute("data-example");
+        if (!ex) return;
+        $("u-input").value = ex;
         setFormat("auto");
         runUniversal();
         $("u-input").focus();
@@ -1028,7 +1030,7 @@
     });
 
     var liveIds = [
-      "ad-expr", "ad-a", "ad-b", "ad-op",
+      "ad-expr", "ad-a", "ad-b",
       "bw-a", "bw-b",
       "sh-val", "sh-count",
       "xn-a", "xn-b",
