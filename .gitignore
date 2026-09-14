@@ -1,8 +1,17 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+__pycache__/
+*.py[cod]
 tests/_chrome-profile/
 tests/_ui.html
 tests/_ui.err
 tests/_dom.html
 tests/_dom.err
+
+# Local agent instructions, prompts, requirements, and work logs
+*.md
+!README.md
+/.agent
+/.agents
+/요구사항
